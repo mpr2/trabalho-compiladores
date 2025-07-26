@@ -3,8 +3,11 @@ from Token import TokenName
 
 if __name__ == "__main__":
     lexer = Lexer("in.txt")
-    t = lexer.next_token()
-    while t.name is not TokenName.EOF:
-        print(t)
+    try:
         t = lexer.next_token()
-    print(t)
+        while t.name != TokenName.EOF:
+            print(t)
+            t = lexer.next_token()
+        print(t)
+    except Exception as e:
+        print(f"Erro na análise léxica: {e}")
