@@ -60,5 +60,10 @@ class TokenAttr(Enum):
     LE = 104  # <=
     GE = 105  # >=
 
+    # Tipos
+    INT = 110
+    CHAR = 111
+    FLOAT = 112
+
     def __str__(self):
         return self.name

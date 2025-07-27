@@ -1,11 +1,27 @@
 from Token import Token, TokenName, TokenAttr
+from SymbolTable import SymbolTableEntry
 
 class Lexer:
     def __init__(self, file_path):
         self.reader = BufReader(file_path)
         self.pos = (1,1)
         self.table = TransitionTable(self.reader)
-        self.lexeme_buffer = ""  
+        self.lexeme_buffer = ""
+        self.symbol_table = {
+            "main": SymbolTableEntry(TokenName.MAIN, "main"),
+            "inicio": SymbolTableEntry(TokenName.INICIO, "inicio"),
+            "fim": SymbolTableEntry(TokenName.FIM, "fim"),
+            "caso": SymbolTableEntry(TokenName.CASO, "caso"),
+            "entao": SymbolTableEntry(TokenName.ENTAO, "entao"),
+            "senao": SymbolTableEntry(TokenName.SENAO, "senao"),
+            "enquanto": SymbolTableEntry(TokenName.ENQUANTO, "enquanto"),
+            "faca": SymbolTableEntry(TokenName.FACA, "faca"),
+            "repita": SymbolTableEntry(TokenName.REPITA, "repita"),
+            "ate": SymbolTableEntry(TokenName.ATE, "ate"),
+            "int": SymbolTableEntry(TokenName.TIPO, "int", type=TokenAttr.INT),
+            "char": SymbolTableEntry(TokenName.TIPO, "char", type=TokenAttr.CHAR),
+            "float": SymbolTableEntry(TokenName.TIPO, "float", type=TokenAttr.FLOAT),
+        }
 
     def next_token(self):
         count = {
@@ -22,13 +38,14 @@ class Lexer:
             if c is not None:
                 self.lexeme_buffer += c  # Acumula caracteres do lexema
                 
-        token = self.table.actions(s, self.pos, count, self.lexeme_buffer)
+        token = self.table.actions(s, self.pos, count, self.lexeme_buffer, self.symbol_table)
         self.pos = (
             self.pos[0] + count['lf'],
             self.pos[1] + count['chars'] if count['lf'] == 0 else count['chars'] - count['last_lf']
         )
         if token.name == TokenName.IGNORE:
             return self.next_token()
+
         return token
 
 
@@ -188,6 +205,7 @@ class TransitionTable:
         }
 
         self.final_states = {-1, 2, 6, 7, 9, 16, 17, 20, 23, 24, 26, 28, 29, 31, 32, 33, 34, 36, 37, 38, 39, 40, 41, 42, 100}
+        self.lookahead_states = {2, 7, 9, 16, 17, 24, 29, 32, 37}
 
     def initial(self):
         return 0
@@ -206,41 +224,12 @@ class TransitionTable:
             return self.others[s]
         return self.table[s][c]
         
-    def actions(self, s, pos, count, lexeme):
+    def actions(self, s, pos, count, lexeme, symbol_table):
         if s == -1:
             raise Exception(f"Erro léxico: {pos}")
-        
-        # Mapeamento de estados para tokens
-        token_map = {
-            2: Token(pos, TokenName.IGNORE),
-            6: Token(pos, TokenName.IGNORE),
-            7: Token(pos, TokenName.DIV),
-            9: self._handle_id_or_keyword(pos, lexeme),
-            11: Token(pos, TokenName.EOF),
-            16: Token(pos, TokenName.CONST_NUM, lexeme),
-            17: Token(pos, TokenName.CONST_NUM, lexeme),
-            20: Token(pos, TokenName.CONST_CHAR, lexeme[1:-1]),
-            23: Token(pos, TokenName.RELOP, TokenAttr.EQ),
-            24: Token(pos, TokenName.ATRIB),
-            26: Token(pos, TokenName.RELOP, TokenAttr.NE),
-            28: Token(pos, TokenName.RELOP, TokenAttr.LE),
-            29: Token(pos, TokenName.RELOP, TokenAttr.LT),
-            31: Token(pos, TokenName.RELOP, TokenAttr.GE),
-            32: Token(pos, TokenName.RELOP, TokenAttr.GT),
-            33: Token(pos, TokenName.PAR_ESQ),
-            34: Token(pos, TokenName.PAR_DIR),
-            36: Token(pos, TokenName.SETA),
-            37: Token(pos, TokenName.SUB),
-            38: Token(pos, TokenName.PONTO_VIRGULA),
-            39: Token(pos, TokenName.VIRGULA),
-            40: Token(pos, TokenName.ADD),
-            41: Token(pos, TokenName.MUL),
-            42: Token(pos, TokenName.POW),
-            100: Token(pos, TokenName.EOF),
-        }
-        
+
         # Estados que precisam retroceder
-        if s in [2, 7, 9, 16, 17, 24, 29, 32, 37]:
+        if s in self.lookahead_states:
             self.reader.go_back()
             lexeme = lexeme[:-1]  # Remove último caractere (não pertence ao token)
 
@@ -249,36 +238,74 @@ class TransitionTable:
         count['lf'] = lexeme.count('\n')
         count['last_lf'] = lexeme.rfind('\n')
 
-        if s in token_map:
-            return token_map[s]
-        
-        raise Exception(f"Ação não definida para estado {s}")
+        match s:
+            case 2:
+                return Token(pos, TokenName.IGNORE) 
+            case 6:
+                return Token(pos, TokenName.IGNORE) 
+            case 7:
+                return Token(pos, TokenName.DIV) 
+            case 9:
+                if lexeme not in symbol_table:
+                    symbol_table[lexeme] = SymbolTableEntry(TokenName.ID, lexeme)
+                    return Token(pos, TokenName.ID, lexeme) 
+                entry = symbol_table[lexeme]
+                if entry.name == TokenName.ID:
+                    return Token(pos, entry.name, lexeme)
+                return Token(pos, entry.name, entry.type)
+            case 11:
+                return Token(pos, TokenName.EOF) 
+            case 16:
+                if lexeme not in symbol_table:
+                    symbol_table[lexeme] = SymbolTableEntry(TokenName.CONST_NUM, lexeme, int(lexeme), TokenAttr.INT)
+                return Token(pos, TokenName.CONST_NUM, lexeme) 
+            case 17:
+                if lexeme not in symbol_table:
+                    symbol_table[lexeme] = SymbolTableEntry(TokenName.CONST_NUM, lexeme, float(lexeme), TokenAttr.FLOAT)
+                return Token(pos, TokenName.CONST_NUM, lexeme) 
+            case 20:
+                if lexeme not in symbol_table:
+                    ch = lexeme[1:-1]
+                    ch = ch[1] if ch[0] == '\\' else ch[0]
+                    symbol_table[lexeme] = SymbolTableEntry(TokenName.CONST_CHAR, lexeme, ch, TokenAttr.CHAR)
+                return Token(pos, TokenName.CONST_CHAR, lexeme) 
+            case 23:
+                return Token(pos, TokenName.RELOP, TokenAttr.EQ) 
+            case 24:
+                return Token(pos, TokenName.ATRIB) 
+            case 26:
+                return Token(pos, TokenName.RELOP, TokenAttr.NE)
+            case 28:
+                return Token(pos, TokenName.RELOP, TokenAttr.LE) 
+            case 29:
+                return Token(pos, TokenName.RELOP, TokenAttr.LT) 
+            case 31:
+                return Token(pos, TokenName.RELOP, TokenAttr.GE) 
+            case 32:
+                return Token(pos, TokenName.RELOP, TokenAttr.GT) 
+            case 33:
+                return Token(pos, TokenName.PAR_ESQ) 
+            case 34:
+                return Token(pos, TokenName.PAR_DIR) 
+            case 36:
+                return Token(pos, TokenName.SETA) 
+            case 37:
+                return Token(pos, TokenName.SUB) 
+            case 38:
+                return Token(pos, TokenName.PONTO_VIRGULA) 
+            case 39:
+                return Token(pos, TokenName.VIRGULA) 
+            case 40:
+                return Token(pos, TokenName.ADD) 
+            case 41:
+                return Token(pos, TokenName.MUL) 
+            case 42:
+                return Token(pos, TokenName.POW) 
+            case 100:
+                return Token(pos, TokenName.EOF) 
+            case _:
+                raise Exception(f"Ação não definida para estado {s}")
     
-    def _handle_id_or_keyword(self, pos, lexeme):
-        # Remove último caractere (não pertence ao token)
-        clean_lexeme = lexeme[:-1]
-        
-        # Palavras-chave
-        keywords = {
-            "main": TokenName.MAIN,
-            "inicio": TokenName.INICIO,
-            "fim": TokenName.FIM,
-            "caso": TokenName.CASO,
-            "entao": TokenName.ENTAO,
-            "senao": TokenName.SENAO,
-            "enquanto": TokenName.ENQUANTO,
-            "faca": TokenName.FACA,
-            "repita": TokenName.REPITA,
-            "ate": TokenName.ATE,
-            "int": TokenName.TIPO,
-            "char": TokenName.TIPO,
-            "float": TokenName.TIPO,
-        }
-        
-        if clean_lexeme.lower() in keywords:
-            return Token(pos, keywords[clean_lexeme.lower()])
-        return Token(pos, TokenName.ID, clean_lexeme)
-
 
 class BufReader:
     def __init__(self, file_path, buffer_size=4096):

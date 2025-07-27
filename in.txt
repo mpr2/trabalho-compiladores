@@ -1,7 +1,8 @@
 /* 
  * Programa de teste para o lexer
  */
-main inicio
+main programa()
+inicio
     int contador = 0;
     float pi = 3.141;
     

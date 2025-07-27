@@ -9,5 +9,10 @@ if __name__ == "__main__":
             print(t)
             t = lexer.next_token()
         print(t)
+
+        print("\nTabela de símbolos: {")
+        for lexeme in lexer.symbol_table:
+            print(f"  {lexeme}: {lexer.symbol_table[lexeme]},")
+        print("}\n")
     except Exception as e:
         print(f"Erro na análise léxica: {e}")
