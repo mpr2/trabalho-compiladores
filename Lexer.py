@@ -21,19 +21,15 @@ class Lexer:
             s = self.table.move(s, c)
             if c is not None:
                 self.lexeme_buffer += c  # Acumula caracteres do lexema
-            count['chars'] += 1
-            if c == '\n':
-                count['lf'] += 1
-                count['last_lf'] = count['chars']
                 
-        x = self.table.actions(s, self.pos, count, self.lexeme_buffer)
+        token = self.table.actions(s, self.pos, count, self.lexeme_buffer)
         self.pos = (
             self.pos[0] + count['lf'],
-            self.pos[1] + count['chars'] if count['lf'] == 0 else count['chars'] - count['last_lf'] + 1
+            self.pos[1] + count['chars'] if count['lf'] == 0 else count['chars'] - count['last_lf']
         )
-        if x.name == TokenName.IGNORE:
+        if token.name == TokenName.IGNORE:
             return self.next_token()
-        return x
+        return token
 
 
 class TransitionTable:
@@ -59,8 +55,9 @@ class TransitionTable:
                 ',': 39,  # Vírgula
                 '+': 40,  # Adição
                 '*': 41,  # Multiplicação
+                '^': 42,  # Potência
                 '-': 35,  # Subtração/seta
-                None: 11  # EOF
+                None: 100  # EOF
             },
             
             # Estado 1: Espaços
@@ -190,38 +187,28 @@ class TransitionTable:
             35: 37,    # Subtração
         }
 
+        self.final_states = {-1, 2, 6, 7, 9, 16, 17, 20, 23, 24, 26, 28, 29, 31, 32, 33, 34, 36, 37, 38, 39, 40, 41, 42, 100}
+
     def initial(self):
         return 0
 
     def final(self, s):
-        return s in [-1, 2, 6, 7, 9, 16, 17, 20, 23, 24, 26, 28, 29, 31, 32, 33, 34, 36, 37, 38, 39, 40, 41, 11]
+        return s in self.final_states
 
     def move(self, s, c):
+        if s in self.final_states:
+            raise Exception("Transição inválida: estado final")
+
         if s not in self.table:
             raise Exception(f"Estado inválido: {s}")
         
-        state_transitions = self.table[s]
-        if state_transitions is None:
-            raise Exception("Transição inválida: estado final")
-        
-        # Verifica transição específica
-        if c in state_transitions:
-            return state_transitions[c]
-        
-        # Verifica transições genéricas
-        if s == 18 and c != '\'' and c != '\\' and c is not None:
-            return 19  
-        
-        # Verifica others
-        if s in self.others:
+        if c not in self.table[s]:
             return self.others[s]
-        
-        # Caractere não esperado
-        return -1
+        return self.table[s][c]
         
     def actions(self, s, pos, count, lexeme):
         if s == -1:
-            raise Exception("Erro léxico")
+            raise Exception(f"Erro léxico: {pos}")
         
         # Mapeamento de estados para tokens
         token_map = {
@@ -248,13 +235,20 @@ class TransitionTable:
             39: Token(pos, TokenName.VIRGULA),
             40: Token(pos, TokenName.ADD),
             41: Token(pos, TokenName.MUL),
+            42: Token(pos, TokenName.POW),
+            100: Token(pos, TokenName.EOF),
         }
         
         # Estados que precisam retroceder
         if s in [2, 7, 9, 16, 17, 24, 29, 32, 37]:
-            self._go_back(count)
+            self.reader.go_back()
             lexeme = lexeme[:-1]  # Remove último caractere (não pertence ao token)
-        
+
+        # Contagem de caracteres e quebras de linha pro cálculo da posição
+        count['chars'] = len(lexeme)
+        count['lf'] = lexeme.count('\n')
+        count['last_lf'] = lexeme.rfind('\n')
+
         if s in token_map:
             return token_map[s]
         
@@ -284,13 +278,6 @@ class TransitionTable:
         if clean_lexeme.lower() in keywords:
             return Token(pos, keywords[clean_lexeme.lower()])
         return Token(pos, TokenName.ID, clean_lexeme)
-
-    def _go_back(self, count):
-        self.reader.go_back()
-        count['chars'] -= 1
-        if self.reader.peek() == '\n':
-            count['lf'] = 0
-            count['last_lf'] = -1
 
 
 class BufReader:

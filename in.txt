@@ -1,29 +1,33 @@
-/* Programa de teste para o lexer */
+/* 
+ * Programa de teste para o lexer
+ */
 main inicio
     int contador = 0;
     float pi = 3.141;
     
-    enquanto (contador < 10) faca {
+    enquanto (contador < 10) faca
+    inicio
         contador = contador + 1;
         
         se (contador == 5) entao
-            escreva("Metade!");
+            escreva(Metade);
+            /* escreva("Metade!"); */
         senao
             escreva(contador);
-    }
+    fim
     
     float resultado = (2.5 * contador ^ 2) / (1.5e1 - 3);
     
-    se (resultado != 0.0 && resultado <= 10.0) entao
-        escreva("Dentro do limite!");
+    se (resultado != 0.0 /*&&*/ resultado <= 10.0) entao
+        escreva(Dentro do limite);
     
-    // Caracteres especiais
+    char c = 'c';
+    char d = '𰻞';
     char special = '\\';
+    char special2 = '\'';
     
-    // Chamada de função
     processa(contador, resultado) -> int;
     
-    // Operadores diversos
     int x = 10, y = 20;
     int z = x * y + (x - y) / 2;
 fim
