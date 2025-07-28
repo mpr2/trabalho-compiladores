@@ -253,8 +253,6 @@ class TransitionTable:
                 if entry.name == TokenName.ID:
                     return Token(pos, entry.name, lexeme)
                 return Token(pos, entry.name, entry.type)
-            case 11:
-                return Token(pos, TokenName.EOF) 
             case 16:
                 if lexeme not in symbol_table:
                     symbol_table[lexeme] = SymbolTableEntry(TokenName.CONST_NUM, lexeme, int(lexeme), TokenAttr.INT)
