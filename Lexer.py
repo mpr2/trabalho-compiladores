@@ -7,6 +7,7 @@ class Lexer:
         self.pos = (1,1)
         self.table = TransitionTable(self.reader)
         self.lexeme_buffer = ""
+        self.buffered_token = None
         self.symbol_table = {
             "main": SymbolTableEntry(TokenName.MAIN, "main"),
             "inicio": SymbolTableEntry(TokenName.INICIO, "inicio"),
@@ -24,6 +25,11 @@ class Lexer:
         }
 
     def next_token(self):
+        if self.buffered_token is not None:
+            token = self.buffered_token
+            self.buffered_token = None
+            return token
+
         count = {
             'chars': 0,
             'lf': 0,
@@ -47,6 +53,11 @@ class Lexer:
             return self.next_token()
 
         return token
+
+    def peek_token(self):
+        if self.buffered_token is None:
+            self.buffered_token = self.next_token()
+        return self.buffered_token
 
 
 class TransitionTable:

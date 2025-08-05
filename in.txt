@@ -1,34 +1,28 @@
-/* 
- * Programa de teste para o lexer
+/*
+ * Programa teste para o parser
  */
-main programa()
+main programa ()
 inicio
-    int contador = 0;
-    float pi = 3.141;
+    /* Declarações */
+    inteiro -> int;
+    c, d2, e -> char;
+    _float -> float;
     
-    enquanto (contador < 10) faca
+    /* Comandos */
+    caso (-x >= (3 + 5.218e-37)) entao
     inicio
-        contador = contador + 1;
-        
-        se (contador == 5) entao
-            escreva(Metade);
-            /* escreva("Metade!"); */
-        senao
-            escreva(contador);
+        _ -> float;
+
+        enquanto (2 + -2 == x*3.97^5) faca
+            repita
+            inicio
+                c = 'a';
+            fim ate (inteiro != _float);
     fim
-    
-    float resultado = (2.5 * contador ^ 2) / (1.5e1 - 3);
-    
-    se (resultado != 0.0 /*&&*/ resultado <= 10.0) entao
-        escreva(Dentro do limite);
-    
-    char c = 'c';
-    char d = '𰻞';
-    char special = '\\';
-    char special2 = '\'';
-    
-    processa(contador, resultado) -> int;
-    
-    int x = 10, y = 20;
-    int z = x * y + (x - y) / 2;
+	caso (x == 3) entao
+        caso (y < 5.3) entao
+            z = '\'';
+        senao
+            a = -5E3;
+    t = 7;
 fim
