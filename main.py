@@ -1,10 +1,10 @@
-from Lexer import Lexer
 from Parser import Parser
-from Token import TokenName
 
 if __name__ == "__main__":
     parser = Parser("in.txt")
     try:
-        parser.parse()
+        tree = parser.parse()
+        tree.pretty_print()
     except Exception as e:
+        print("Não foi possível processar o arquivo:")
         print(e)
