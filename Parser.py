@@ -239,7 +239,7 @@ class Parser:
             if token.name == TokenName.MUL or token.name == TokenName.DIV:
                 self.token = self.lexer.next_token()
                 tree.add_child(Tree(self.token))
-                tree.add_child(self._parse_termo())
+                tree.add_child(self._parse_fator())
             else:
                 break
         if not tree.is_leaf():
@@ -286,3 +286,6 @@ class Parser:
         
     def _erro(self, expected):
         raise Exception(f'{self.token.pos} Erro sintático: {expected} esperado, {self.token.name} encontrado.')
+
+    def get_symbol_table(self):
+        return self.lexer.symbol_table
