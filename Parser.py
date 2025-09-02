@@ -5,9 +5,9 @@ from Tree import Tree
 class Parser:
     def __init__(self, file_path):
         self.lexer = Lexer(file_path)
-        self.token = None
-        self.id_was_read = False
-        self.first = {
+        self.token = None #último token lido
+        self.id_was_read = False #indica se um ID já foi lido de antemão
+        self.first = { #conjuntos FIRST para cada não-terminal
             'programa': {TokenName.MAIN},
             'bloco': {TokenName.INICIO},
             'declaracoes': {TokenName.ID},
@@ -44,6 +44,7 @@ class Parser:
         tree.add_child(self._parse_bloco())
 
         self.token = self.lexer.next_token()
+        #se chegou ao final e sobrou algum token, lança um erro
         if self.token.name != TokenName.EOF:
             raise Exception(f"{self.token.pos} Erro sintático: fim de arquivo esperado")
         return tree
@@ -58,16 +59,21 @@ class Parser:
     
     def _parse_declaracoes(self):
         tree = Tree('DECLARACOES')
+        #loop enquanto próximo token estiver em first(declaracoes), no caso só o token ID
         while (token := self.lexer.peek_token()) and token.name in self.first['declaracao']:
+            #le um token a mais pra tomar a decisão
             self.token = self.lexer.next_token()
-            self.id_was_read = True
+            self.id_was_read = True  #indica que um token ID já foi lido
             peek = self.lexer.peek_token()
-            if peek.name == TokenName.SETA or peek.name == TokenName.VIRGULA:
+            #se próximo token for seta ou vírgula, é uma declaração
+            if peek.name == TokenName.SETA or peek.name == TokenName.VIRGULA: 
                 tree.add_child(self._parse_declaracao())
+            #senão é um comando de atribuição, então sai do loop e retorna None, o que equivale a uma produção epsilon e indica o fim da seção de declarações
             else:
                 break
         if not tree.is_leaf():
             return tree
+        #se árvore não tem nenhum filho, considera como produção epsilon e retorna None
         return None
 
     def _parse_declaracao(self):
@@ -80,9 +86,11 @@ class Parser:
 
     def _parse_lista_ids(self):
         tree = Tree('LISTA_IDS')
+        #se ID já foi lido, evita ler um novo token e apenas adiciona o token lido como filho da subárvore
         if self.id_was_read:
             self.id_was_read = False
             tree.add_child(Tree(self.token))
+        #senão checa se o próximo token é ID
         else:
             self._check_token(TokenName.ID, tree)
         tree.add_child(self._parse_lista_ids2())
@@ -100,6 +108,7 @@ class Parser:
 
     def _parse_comandos(self):
         tree = Tree('COMANDOS')
+        #se id já foi lido não precisa checar o próximo token
         while self.id_was_read or ((token := self.lexer.peek_token()) and token.name in self.first['comando']):
             tree.add_child(self._parse_comando())
         if not tree.is_leaf():
@@ -113,6 +122,7 @@ class Parser:
             tree.add_child(self._parse_selecao())
         elif token.name in self.first['repeticao']:
             tree.add_child(self._parse_repeticao())
+        #se id já foi lido não precisa checar o próximo token
         elif self.id_was_read or token.name in self.first['atribuicao']:
             tree.add_child(self._parse_atribuicao())
         else:
@@ -196,9 +206,11 @@ class Parser:
 
     def _parse_atribuicao(self):
         tree = Tree('ATRIBUICAO')
+        #se id já foi lido, apenas adiciona o último token lido na subárvore sem consumir o próximo token
         if self.id_was_read:
             self.id_was_read = False
             tree.add_child(Tree(self.token))
+        #senão checa se o próximo token é um ID
         else:
             self._check_token(TokenName.ID, tree)
         self._check_token(TokenName.ATRIB, tree)
@@ -279,6 +291,7 @@ class Parser:
         return tree
 
     def _check_token(self, token_name, tree):
+        """Checa se o próximo token corresponde a token_name e o adiciona como filho da árvore"""
         self.token = self.lexer.next_token()
         if self.token.name != token_name:
             self._erro(token_name)
